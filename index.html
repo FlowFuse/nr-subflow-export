@@ -1,0 +1,179 @@
+<script>
+    (function (RED, n) {
+        const plugin = {
+            type: 'subflow',
+            name: 'Node-RED SubFlow Export Plugin',
+            icon: 'font-awesome/fa-magic',
+            settings: {
+                '*': {
+                    exportable: true
+                }
+            },
+            onadd: async function () {
+                RED.actions.add('flowfuse-nr-subfow-export:show', showSidebar, { label: '@flowfuse/nr-subflow-export/flowfuse-nr-subflow-export:menu.label' })
+
+                const exportSidebar = $('<div>').css({'position': 'relative', 'height': '100%'})
+                const header = $('<div>', {class:'red-ui-sidebar-header'}).text('FlowFuse SubFlow Exporter')
+                header.appendTo(exportSidebar)
+                const SFList = $('<ul>', {id: 'ff-sub-flow-list'})
+                SFList.appendTo(exportSidebar);
+                
+                RED.sidebar.addTab({
+                    id: 'flowfuse-nr-subflow-export',
+                    label: 'FlowFuse SubFlow Export',
+                    name: 'FlowFuse SubFlow Export',
+                    iconClass: 'fa fa-database',
+                    content: exportSidebar,
+                    enableOnEdit: true,
+                    action: 'flowfuse-nr-subfow-export:show',
+                    onchange: function () {
+                        refreshSidebar()
+                    }
+                })
+            }
+        }
+
+        let teamScope
+
+        RED.comms.subscribe('ff-subflow-plugin/#', (topic, msg) => {
+            debug('comms', topic, msg)
+            if (topic === 'ff-subflow-plugin/init') {
+                teamScope = msg?.teamId
+
+                RED.plugins.registerPlugin('flowfuse-nr-subflow-export', plugin)
+                RED.events.on("subflows:add", function(node) {
+                    debug('subflow added')
+                    refreshSidebar()
+                })
+                RED.events.on("subflows:remove", function(node) {
+                    debug('subflow removed')
+                    refreshSidebar()
+                })
+                RED.events.on("subflows:change", function(node) {
+                    debug('subflow changed')
+                    refreshSidebar()
+                })
+            }
+        })
+
+        function showSidebar () {
+            RED.sidebar.show('flowfuse-nr-subflow-export')
+            refreshSidebar()
+        }
+
+        function refreshSidebar () {
+            const list = $('#ff-sub-flow-list')
+            list.empty()
+            RED.nodes.eachSubflow(function (sf) {
+                const li = $('<li>')
+                // li.click(function () {
+                //     exportSubFlow(sf.id)
+                // })
+                const name = $('<div>', { style: 'font-weight: bold'})
+                name.text(sf.name)
+                li.append(name)
+                if (sf.meta?.module && sf.meta?.version) {
+                    const details = $('<div>')
+                    details.text(`${sf.meta.module}@${sf.meta.version} `)
+                    const but = $('<button>', { style: 'padding-left: 5px; cursor: pointer' })
+                    but.text('publish')
+                    but.click(function () {
+                        exportSubFlow(sf.id)
+                    })
+                    details.append(but)
+                   li.append(details)
+                } else {
+                    const span = $('<span>', { style: 'padding-left: 5px' })
+                    span.text('needs details adding ')
+                    const link = $('<button>')
+                    link.text('edit')
+                    link.click(function() {
+                        console.log('open subflow', sf.id)
+                        RED.workspaces.show(sf.id)
+                        RED.editor.editSubflow(RED.nodes.subflow(sf.id), 'editor-tab-subflow-module')
+                    })
+                    li.append(span)
+                    li.append(link)
+                }
+                list.append(li)
+            })
+        }
+
+        function exportSubFlow (id) {
+            const ODB = RED.nodes.dirty()
+            let tempNode = false
+            const allNodes = RED.nodes.createCompleteNodeSet()
+            // works, but requires an instance of the subflow on the canvas
+            const subFlows = allNodes.filter(n => n.type === 'subflow' && n.id === id)
+            const sf = subFlows[0]
+            console.log(sf)
+            if (sf.meta && !sf.meta.module.startsWith(`@flowfuse-${teamScope}/`)) {
+                RED.notify(`Subflow Module name must startWith @flowfuse-${teamScope}/`, { type: 'error' })
+                return
+            }
+
+            let sfInstance = allNodes.filter(n => n.type === `subflow:${sf.id}`)[0]
+            if (!sfInstance) {
+                debug(`no instance of ${sf.name} found on canvas`)
+                const fistTab = RED.nodes.getWorkspaceOrder()[0]
+                sfInstance = RED.nodes.add({id: 'ff-sf-exp',type: `subflow:${sf.id}`, _def: {}, z: fistTab, x: 0, y: 0})
+                tempNode = true
+
+            }
+            console.log(sfInstance)
+            sfInstance._def = RED.nodes.getType(sfInstance.type)
+            const exportedSF = RED.nodes.createExportableNodeSet([sfInstance], { includeModuleConfig: true })
+
+            if (tempNode) {
+                RED.nodes.remove('ff-sf-exp')
+                RED.nodes.dirty(ODB)
+            }
+            
+            debug('exported', sfInstance.id, exportedSF)
+            const globalConfig = exportedSF.filter(n => n.type === 'global-config')[0]
+            const cleanNodes = exportedSF.filter(n => n.id !== sf.id && n.type !== 'global-config' && n.id !== sfInstance.id)
+            const def = {
+                ...sf,
+                flow: cleanNodes
+            }
+            const package = {
+                name: sf.meta.module,
+                description: sf.meta.desc,
+                version: sf.meta.version,
+                license: sf.meta.license,
+                "node-red": {
+                    nodes: {},
+                    dependencies: globalConfig ? Object.keys(globalConfig.modules) : {}
+                },
+                author: sf.meta.author,
+                dependencies: globalConfig ?  globalConfig.modules : undefined
+            }
+            package["node-red"].nodes[sf.meta.type] = "node.js"
+            debug(def, package)
+            fetch('ff/package-subflow', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({def, package})
+            })
+            .then(resp => {
+                if (resp.status === 409) {
+                    RED.notify('Subflow with that version already exists', { type: 'error' })
+                } else if (resp.status === 200) {
+                    RED.notify('Subflow published' , { type: 'success' })
+                } else if (resp.status == 403) {
+                    RED.notify('Subflow Modules name incorrect', { type: 'error'})
+                } else {
+                    debug(resp)
+                }
+            })
+            .catch(err => {
+                debug(err)
+            })
+        }
+
+        function debug () {
+            console.log('[nr-subflow-export]', ...arguments)
+        }
+
+    }(RED, $))
+</script>

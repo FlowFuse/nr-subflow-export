@@ -1,0 +1,7 @@
+{
+    "name": "FF SubFlow Exporter",
+    "menu": {
+        "label": "Publish SubFlow",
+        "description": "Export SubFlow as Module to NPM Registry"
+    }
+}

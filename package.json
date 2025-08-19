@@ -1,0 +1,33 @@
+{
+  "name": "@flowfuse/nr-subflow-export",
+  "version": "1.0.0",
+  "description": "Node-RED plugin to export SubFlows as modules",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "node-red",
+    "flowfuse",
+    "plugin"
+  ],
+  "repository": {
+        "type": "git",
+        "url": "git+https://github.com/FlowFuse/nr-subflow-export.git"
+    },
+    "bugs": {
+        "url": "https://github.com/FlowFuse/nr-subflow-export/issues"
+    },
+    "homepage": "https://github.com/FlowFuse/nr-subflow-export#readme",
+  "author": "FlowFuse Inc.",
+  "license": "Apache-2.0",
+  "node-red": {
+    "version": ">=3.1.x",
+    "plugins": {
+      "flowfuse-nr-subflow-export": "index.js"
+    }
+  },
+  "engines": {
+      "node": ">=16.x"
+  }
+}
