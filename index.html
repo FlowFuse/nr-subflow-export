@@ -1,219 +1,219 @@
 <script>
-    (function (RED, n) {
-        debug('nr-subflow-export loaded')
-        const plugin = {
-            type: 'subflow',
-            name: 'Node-RED SubFlow Export Plugin',
-            icon: 'resources/@flowfuse/nr-subflow-export/icons/subflow.svg',
-            settings: {
-                '*': {
-                    exportable: true
+/* global RED, $ */
+(function (RED, n) {
+    debug('nr-subflow-export loaded')
+    const plugin = {
+        type: 'subflow',
+        name: 'Node-RED SubFlow Export Plugin',
+        icon: 'resources/@flowfuse/nr-subflow-export/icons/subflow.svg',
+        settings: {
+            '*': {
+                exportable: true
+            }
+        },
+        onadd: async function () {
+            RED.actions.add('flowfuse-nr-subfow-export:show', showSidebar, { label: '@flowfuse/nr-subflow-export/flowfuse-nr-subflow-export:menu.label' })
+
+            const exportSidebar = $('<div>', { class: 'red-ui-sidebar-subflow-export' }).css({ 'position': 'relative', 'height': '100%' })
+            const header = $('<div>', { class: 'red-ui-sidebar-header' }).text('Subflows')
+            header.appendTo(exportSidebar)
+            const instructions = $('<div>', { class: 'instructions-info' })
+                .html(`When defining the module name, ensure you format it as <b>@flowfuse-${teamScope}/&lt;module-name&gt;</b>`)
+            instructions.appendTo(exportSidebar)
+            const SFList = $('<ul>', { id: 'ff-subflow-list' })
+            SFList.appendTo(exportSidebar)
+
+            RED.sidebar.addTab({
+                id: 'flowfuse-nr-subflow-export',
+                label: 'FlowFuse Subflow Export',
+                name: 'FlowFuse Subflow Export',
+                iconClass: 'fa sf-sidebar-icon',
+                content: exportSidebar,
+                enableOnEdit: true,
+                action: 'flowfuse-nr-subflow-export:show',
+                onchange: function () {
+                    refreshSidebar()
                 }
-            },
-            onadd: async function () {
-                RED.actions.add('flowfuse-nr-subfow-export:show', showSidebar, { label: '@flowfuse/nr-subflow-export/flowfuse-nr-subflow-export:menu.label' })
-
-                const exportSidebar = $('<div>', {class: 'red-ui-sidebar-subflow-export'}).css({'position': 'relative', 'height': '100%'})
-                const header = $('<div>', {class:'red-ui-sidebar-header'}).text('Subflows')
-                header.appendTo(exportSidebar)
-                const instructions = $('<div>', {class:'instructions-info'})
-                    .html(`When defining the module name, ensure you format it as <b>@flowfuse-${teamScope}/&lt;module-name&gt;</b>`)
-                instructions.appendTo(exportSidebar)
-                const SFList = $('<ul>', {id: 'ff-subflow-list'})
-                SFList.appendTo(exportSidebar);
-                
-                RED.sidebar.addTab({
-                    id: 'flowfuse-nr-subflow-export',
-                    label: 'FlowFuse Subflow Export',
-                    name: 'FlowFuse Subflow Export',
-                    iconClass: 'fa sf-sidebar-icon',
-                    content: exportSidebar,
-                    enableOnEdit: true,
-                    action: 'flowfuse-nr-subflow-export:show',
-                    onchange: function () {
-                        refreshSidebar()
-                    }
-                })
-            }
+            })
         }
+    }
 
-        let teamScope
+    let teamScope
 
-        RED.comms.subscribe('ff-subflow-plugin/#', (topic, msg) => {
-            if (topic === 'ff-subflow-plugin/init') {
-                teamScope = msg?.teamId
+    RED.comms.subscribe('ff-subflow-plugin/#', (topic, msg) => {
+        if (topic === 'ff-subflow-plugin/init') {
+            teamScope = msg?.teamId
 
-                RED.plugins.registerPlugin('flowfuse-nr-subflow-export', plugin)
-                RED.events.on("subflows:add", function(node) {
-                    refreshSidebar()
-                })
-                RED.events.on("subflows:remove", function(node) {
-                    refreshSidebar()
-                })
-                RED.events.on("subflows:change", function(node) {
-                    refreshSidebar()
-                })
-            }
+            RED.plugins.registerPlugin('flowfuse-nr-subflow-export', plugin)
+            RED.events.on("subflows:add", function (node) {
+                refreshSidebar()
+            })
+            RED.events.on("subflows:remove", function (node) {
+                refreshSidebar()
+            })
+            RED.events.on("subflows:change", function (node) {
+                refreshSidebar()
+            })
+        }
+    })
+
+    function showSidebar() {
+        RED.sidebar.show('flowfuse-nr-subflow-export')
+        refreshSidebar()
+    }
+
+    function refreshSidebar() {
+        const list = $('#ff-subflow-list')
+        list.empty()
+        RED.nodes.eachSubflow(function (sf) {
+            const li = $('<li>')
+            const title = $('<div>', { class: 'sf-title' })
+
+            // add subflow icon and name to title row
+            const titleContent = $('<div>', { class: 'sf-title-content' })
+
+            // add subflow SVG icon
+            const icon = $('<img>', {
+                src: 'resources/@flowfuse/nr-subflow-export/icons/subflow.svg',
+                class: 'sf-icon',
+                alt: 'Subflow icon'
+            })
+            titleContent.append(icon)
+
+            // add name to title row
+            const name = $('<label>')
+            name.text(sf.name)
+            titleContent.append(name)
+
+            title.append(titleContent)
+
+            // container for actions
+            const actions = $('<div>', { class: 'sf-actions' })
+
+            // add edit button for quick access to editing subflow
+            const edit = $('<button>', { class: 'editor-button editor-button-small nr-db-sb-list-header-button' })
+            edit.text('Edit')
+            edit.click(function () {
+                RED.workspaces.show(sf.id)
+                RED.editor.editSubflow(RED.nodes.subflow(sf.id), 'editor-tab-subflow-module')
+            })
+            actions.append(edit)
+
+            // add publish button to title row, but disable it if module and version not set
+            const publish = $('<button>', {
+                class: 'editor-button editor-button-small nr-db-sb-list-header-button',
+                disabled: !sf.meta?.module || !sf.meta?.version
+            })
+            publish.text('Publish')
+            publish.click(function () {
+                exportSubFlow(sf.id)
+            })
+            actions.append(publish)
+
+            title.append(actions)
+            li.append(title)
+
+            // add section for module details
+            const moduleDetails = $('<div>', { class: 'sf-module-details' })
+
+            // add a row for the module name
+            const moduleName = $('<div>', { class: 'sf-row module-name' })
+            const moduleLabel = $('<label>')
+            moduleLabel.text('Module:')
+            moduleName.append(moduleLabel)
+            // add the module name, add class if not defined
+            const moduleNameValue = $('<span>', { class: sf.meta?.module ? 'sf-module-name-value' : 'sf-row-missing' })
+            moduleNameValue.html(sf.meta?.module || '<span class="sf-row-missing"><i class="fa fa-warning"></i> Not Defined</span>')
+            moduleName.append(moduleNameValue)
+            moduleDetails.append(moduleName)
+
+            // add a row for the version
+            const version = $('<div>', { class: 'sf-row version' })
+            const versionLabel = $('<label>')
+            versionLabel.text('Version:')
+            version.append(versionLabel)
+            const versionValue = $('<span>', { class: 'sf-version-value' })
+            versionValue.html(sf.meta?.version || '<span class="sf-row-missing"><i class="fa fa-warning"></i> Not Defined</span>')
+            version.append(versionValue)
+            moduleDetails.append(version)
+
+            li.append(moduleDetails)
+
+            list.append(li)
         })
+    }
 
-        function showSidebar () {
-            RED.sidebar.show('flowfuse-nr-subflow-export')
-            refreshSidebar()
+    function exportSubFlow(id) {
+        const ODB = RED.nodes.dirty()
+        let tempNode = false
+        const allNodes = RED.nodes.createCompleteNodeSet()
+        // works, but requires an instance of the subflow on the canvas
+        const subFlows = allNodes.filter(n => n.type === 'subflow' && n.id === id)
+        const sf = subFlows[0]
+        if (sf.meta && !sf.meta.module.startsWith(`@flowfuse-${teamScope}/`)) {
+            RED.notify(`Subflow Module name must startWith @flowfuse-${teamScope}/`, { type: 'error' })
+            return
         }
 
-        function refreshSidebar () {
-            const list = $('#ff-subflow-list')
-            list.empty()
-            RED.nodes.eachSubflow(function (sf) {
-                const li = $('<li>')
-                const title = $('<div>', { class: 'sf-title' })
-                
-                // add subflow icon and name to title row
-                const titleContent = $('<div>', { class: 'sf-title-content' })
-                
-                // add subflow SVG icon
-                const icon = $('<img>', { 
-                    src: 'resources/@flowfuse/nr-subflow-export/icons/subflow.svg',
-                    class: 'sf-icon',
-                    alt: 'Subflow icon'
-                })
-                titleContent.append(icon)
-                
-                // add name to title row
-                const name = $('<label>')
-                name.text(sf.name)
-                titleContent.append(name)
-                
-                title.append(titleContent)
+        let sfInstance = allNodes.filter(n => n.type === `subflow:${sf.id}`)[0]
+        if (!sfInstance) {
+            debug(`no instance of ${sf.name} found on canvas`)
+            const fistTab = RED.nodes.getWorkspaceOrder()[0]
+            sfInstance = RED.nodes.add({ id: 'ff-sf-exp', type: `subflow:${sf.id}`, _def: {}, z: fistTab, x: 0, y: 0 })
+            tempNode = true
+        }
+        sfInstance._def = RED.nodes.getType(sfInstance.type)
+        const exportedSF = RED.nodes.createExportableNodeSet([sfInstance], { includeModuleConfig: true })
 
-                // container for actions
-                const actions = $('<div>', { class: 'sf-actions' })
-
-                // add edit button for quick access to editing subflow
-                const edit = $('<button>', { class: 'editor-button editor-button-small nr-db-sb-list-header-button' })
-                edit.text('Edit')
-                edit.click(function () {
-                    RED.workspaces.show(sf.id)
-                    RED.editor.editSubflow(RED.nodes.subflow(sf.id), 'editor-tab-subflow-module')
-                })
-                actions.append(edit)
-
-                // add publish button to title row, but disable it if module and version not set
-                const publish = $('<button>', { class: 'editor-button editor-button-small nr-db-sb-list-header-button', disabled: !sf.meta?.module || !sf.meta?.version })
-                publish.text('Publish')
-                publish.click(function () {
-                    exportSubFlow(sf.id)
-                })
-                actions.append(publish)
-
-                title.append(actions)
-                li.append(title)
-
-                // add section for module details
-                const moduleDetails = $('<div>', { class: 'sf-module-details' })
-
-                // add a row for the module name
-                const moduleName = $('<div>', { class: 'sf-row module-name' })
-                const moduleLabel = $('<label>')
-                moduleLabel.text('Module:')
-                moduleName.append(moduleLabel)
-                // add the module name, add class if not defined
-                const moduleNameValue = $('<span>', { class: sf.meta?.module ? 'sf-module-name-value' : 'sf-row-missing' })
-                moduleNameValue.html(sf.meta?.module || '<span class="sf-row-missing"><i class="fa fa-warning"></i> Not Defined</span>')
-                moduleName.append(moduleNameValue)
-                moduleDetails.append(moduleName)
-
-                // add a row for the version
-                const version = $('<div>', { class: 'sf-row version' })
-                const versionLabel = $('<label>')
-                versionLabel.text('Version:')
-                version.append(versionLabel)
-                const versionValue = $('<span>', { class: 'sf-version-value'})
-                versionValue.html(sf.meta?.version || '<span class="sf-row-missing"><i class="fa fa-warning"></i> Not Defined</span>')
-                version.append(versionValue)
-                moduleDetails.append(version)
-
-                li.append(moduleDetails)
-
-                list.append(li)
-            })
+        if (tempNode) {
+            RED.nodes.remove('ff-sf-exp')
+            RED.nodes.dirty(ODB)
         }
 
-        function exportSubFlow (id) {
-            const ODB = RED.nodes.dirty()
-            let tempNode = false
-            const allNodes = RED.nodes.createCompleteNodeSet()
-            // works, but requires an instance of the subflow on the canvas
-            const subFlows = allNodes.filter(n => n.type === 'subflow' && n.id === id)
-            const sf = subFlows[0]
-            if (sf.meta && !sf.meta.module.startsWith(`@flowfuse-${teamScope}/`)) {
-                RED.notify(`Subflow Module name must startWith @flowfuse-${teamScope}/`, { type: 'error' })
-                return
-            }
-
-            let sfInstance = allNodes.filter(n => n.type === `subflow:${sf.id}`)[0]
-            if (!sfInstance) {
-                debug(`no instance of ${sf.name} found on canvas`)
-                const fistTab = RED.nodes.getWorkspaceOrder()[0]
-                sfInstance = RED.nodes.add({id: 'ff-sf-exp',type: `subflow:${sf.id}`, _def: {}, z: fistTab, x: 0, y: 0})
-                tempNode = true
-
-            }
-            sfInstance._def = RED.nodes.getType(sfInstance.type)
-            const exportedSF = RED.nodes.createExportableNodeSet([sfInstance], { includeModuleConfig: true })
-
-            if (tempNode) {
-                RED.nodes.remove('ff-sf-exp')
-                RED.nodes.dirty(ODB)
-            }
-            
-            const globalConfig = exportedSF.filter(n => n.type === 'global-config')[0]
-            const cleanNodes = exportedSF.filter(n => n.id !== sf.id && n.type !== 'global-config' && n.id !== sfInstance.id)
-            const def = {
-                ...sf,
-                flow: cleanNodes
-            }
-            const package = {
-                name: sf.meta.module,
-                description: sf.meta.desc,
-                version: sf.meta.version,
-                license: sf.meta.license,
-                "node-red": {
-                    nodes: {},
-                    dependencies: globalConfig ? Object.keys(globalConfig.modules) : {}
-                },
-                author: sf.meta.author,
-                dependencies: globalConfig ?  globalConfig.modules : undefined
-            }
-            package["node-red"].nodes[sf.meta.type] = "node.js"
-            fetch('ff/package-subflow', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({def, package})
-            })
-            .then(resp => {
-                if (resp.status === 409) {
-                    RED.notify('Subflow with that version already exists. Increase the version number and try again', { type: 'error' })
-                } else if (resp.status === 200) {
-                    RED.notify('Subflow successfully published' , { type: 'success' })
-                } else if (resp.status == 403) {
-                    RED.notify('Subflow module name incorrect', { type: 'error'})
-                } else {
-                    debug(resp)
-                    RED.notify('Something unexpected went wrong.', { type: 'error'})
-                }
-            })
-            .catch(err => {
-                debug(err)
-                RED.notify('Something unexpected went wrong.', { type: 'error'})
-            })
+        const globalConfig = exportedSF.filter(n => n.type === 'global-config')[0]
+        const cleanNodes = exportedSF.filter(n => n.id !== sf.id && n.type !== 'global-config' && n.id !== sfInstance.id)
+        const def = {
+            ...sf,
+            flow: cleanNodes
         }
-
-        function debug () {
-            console.log('[nr-subflow-export]', ...arguments)
+        const pack = {
+            'name': sf.meta.module,
+            'description': sf.meta.desc,
+            'version': sf.meta.version,
+            'license': sf.meta.license,
+            'node-red': {
+                nodes: {},
+                dependencies: globalConfig ? Object.keys(globalConfig.modules) : {}
+            },
+            'author': sf.meta.author,
+            'dependencies': globalConfig ? globalConfig.modules : undefined
         }
+        pack["node-red"].nodes[sf.meta.type] = "node.js"
+        fetch('ff/package-subflow', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ def, pack })
+        }).then(resp => {
+            if (resp.status === 409) {
+                RED.notify('Subflow with that version already exists. Increase the version number and try again', { type: 'error' })
+            } else if (resp.status === 200) {
+                RED.notify('Subflow successfully published', { type: 'success' })
+            } else if (resp.status == 403) {
+                RED.notify('Subflow module name incorrect', { type: 'error' })
+            } else {
+                debug(resp)
+                RED.notify('Something unexpected went wrong.', { type: 'error' })
+            }
+        }).catch(err => {
+            debug(err)
+            RED.notify('Something unexpected went wrong.', { type: 'error' })
+        })
+    }
 
-    }(RED, $))
+    function debug() {
+        console.log('[nr-subflow-export]', ...arguments)
+    }
+}(RED, $))
 </script>
 
 <style>
