@@ -4,8 +4,8 @@
   "description": "Node-RED plugin to export SubFlows as modules",
   "main": "index.js",
   "scripts": {
-    "eslint": "eslint",
-    "eslint_fix": "eslint --fix",
+    "lint": "eslint -c eslint.config.mjs",
+    "lint:fix": "eslint -c eslint.config.mjs --fix",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
