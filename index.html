@@ -14,7 +14,7 @@
         onadd: async function () {
             RED.actions.add('flowfuse-nr-subfow-export:show', showSidebar, { label: '@flowfuse/nr-subflow-export/flowfuse-nr-subflow-export:menu.label' })
 
-            const exportSidebar = $('<div>', { class: 'red-ui-sidebar-subflow-export' }).css({ 'position': 'relative', 'height': '100%' })
+            const exportSidebar = $('<div>', { class: 'red-ui-sidebar-subflow-export' }).css({ position: 'relative', height: '100%' })
             const header = $('<div>', { class: 'red-ui-sidebar-header' }).text('Subflows')
             header.appendTo(exportSidebar)
             const instructions = $('<div>', { class: 'instructions-info' })
@@ -45,24 +45,24 @@
             teamScope = msg?.teamId
 
             RED.plugins.registerPlugin('flowfuse-nr-subflow-export', plugin)
-            RED.events.on("subflows:add", function (node) {
+            RED.events.on('subflows:add', function (node) {
                 refreshSidebar()
             })
-            RED.events.on("subflows:remove", function (node) {
+            RED.events.on('subflows:remove', function (node) {
                 refreshSidebar()
             })
-            RED.events.on("subflows:change", function (node) {
+            RED.events.on('subflows:change', function (node) {
                 refreshSidebar()
             })
         }
     })
 
-    function showSidebar() {
+    function showSidebar () {
         RED.sidebar.show('flowfuse-nr-subflow-export')
         refreshSidebar()
     }
 
-    function refreshSidebar() {
+    function refreshSidebar () {
         const list = $('#ff-subflow-list')
         list.empty()
         RED.nodes.eachSubflow(function (sf) {
@@ -143,7 +143,7 @@
         })
     }
 
-    function exportSubFlow(id) {
+    function exportSubFlow (id) {
         const ODB = RED.nodes.dirty()
         let tempNode = false
         const allNodes = RED.nodes.createCompleteNodeSet()
@@ -177,18 +177,18 @@
             flow: cleanNodes
         }
         const pack = {
-            'name': sf.meta.module,
-            'description': sf.meta.desc,
-            'version': sf.meta.version,
-            'license': sf.meta.license,
+            name: sf.meta.module,
+            description: sf.meta.desc,
+            version: sf.meta.version,
+            license: sf.meta.license,
             'node-red': {
                 nodes: {},
                 dependencies: globalConfig ? Object.keys(globalConfig.modules) : {}
             },
-            'author': sf.meta.author,
-            'dependencies': globalConfig ? globalConfig.modules : undefined
+            author: sf.meta.author,
+            dependencies: globalConfig ? globalConfig.modules : undefined
         }
-        pack["node-red"].nodes[sf.meta.type] = "node.js"
+        pack['node-red'].nodes[sf.meta.type] = 'node.js'
         fetch('ff/package-subflow', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -198,7 +198,7 @@
                 RED.notify('Subflow with that version already exists. Increase the version number and try again', { type: 'error' })
             } else if (resp.status === 200) {
                 RED.notify('Subflow successfully published', { type: 'success' })
-            } else if (resp.status == 403) {
+            } else if (resp.status === 403) {
                 RED.notify('Subflow module name incorrect', { type: 'error' })
             } else {
                 debug(resp)
@@ -210,7 +210,8 @@
         })
     }
 
-    function debug() {
+    function debug () {
+        // eslint-disable-next-line no-console
         console.log('[nr-subflow-export]', ...arguments)
     }
 }(RED, $))

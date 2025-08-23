@@ -1,60 +1,54 @@
-import globals from "globals"
-import html from "eslint-plugin-html"
-import js from "@eslint/js"
+import globals from 'globals'
+import html from 'eslint-plugin-html'
+import js from '@eslint/js'
 import neostandard, { resolveIgnoresFromGitignore } from 'neostandard'
 import stylistic from '@stylistic/eslint-plugin'
+import noOnlyTests from 'eslint-plugin-no-only-tests'
 
 export default [
     {
-        files: ["**/*.js"],
+        files: ['**/*.js'],
         languageOptions: {
             globals: {
-                ...globals.browser,
+                ...globals.browser
             },
-            sourceType: "script",
-        },
+            sourceType: 'script'
+        }
     },
     {
-        files: ["**/*.html"],
+        files: ['**/*.html'],
         plugins: { html },
         settings: {
-            "html/indent": "space",
-            "html/report-bad-indent": "error",
-        },
+            'html/indent': 'space',
+            'html/report-bad-indent': 'error'
+        }
     },
     {
         ignores: [
-            ...resolveIgnoresFromGitignore(),
-        ],
+            ...resolveIgnoresFromGitignore()
+        ]
     },
     js.configs.recommended,
     // stylistic.configs['recommended-flat'],
     ...neostandard(),
     {
         plugins: {
-            "@stylistic": stylistic,
+            '@stylistic': stylistic,
+            'no-only-tests': noOnlyTests
         },
         rules: {
-            "camelcase": "off",
-            "eqeqeq": "off",
-            "no-empty": ["error", { "allowEmptyCatch": true }],
-            "no-unused-vars": ["error", {
-                "args": "none",
-                "caughtErrors": "none",
-            }],
-            "object-shorthand": ["warn", "consistent"],
-            "yoda": "off",
-            "@stylistic/indent": ["warn", 4, { "SwitchCase": 1 }],
-            "@stylistic/linebreak-style": ["error", "unix"],
-            "@stylistic/max-len": ["warn", 165],
-            "@stylistic/no-tabs": "off",
-            "@stylistic/quotes": ["off", "single", { "avoidEscape": true }],
-            "@stylistic/quote-props": ["warn", "consistent"],
-            "@stylistic/space-before-function-paren": ["warn", {
-                "anonymous": "always",
-                "asyncArrow": "always",
-                "named": "never",
-            }],
-        },
-    },
+            // built-in
+            'object-shorthand': ['error'],
+            'no-console': ['error', { allow: ['debug', 'info', 'warn', 'error'] }],
+
+            // plugin:stylistic
+            '@stylistic/indent': ['warn', 4], // https://eslint.style/rules/indent#options
+            '@stylistic/spaced-comment': ['error', 'always'], // https://eslint.style/rules/spaced-comment
+            '@stylistic/no-multi-spaces': 'error', // https://eslint.style/rules/no-multi-spaces#no-multi-spaces
+            '@stylistic/comma-dangle': ['error', 'never'], // https://eslint.style/rules/comma-dangle#comma-dangle
+
+            // plugin:no-only-tests
+            'no-only-tests/no-only-tests': 'error'
+        }
+    }
 ]
