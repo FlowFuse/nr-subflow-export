@@ -17,9 +17,9 @@ module.exports = (RED) => {
                             }),
                             headers: {
                                 'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${RED.settings.httpStorage.token}`
+                                Authorization: `Bearer ${RED.settings.httpStorage.token}`
                             }
-                        })
+                        })// bad comment
                         if (response.status === 200 || response.status === 204) {
                             res.status(200).send()
                             return
@@ -30,8 +30,10 @@ module.exports = (RED) => {
                             res.status(403).send()
                             return
                         }
+                        // eslint-disable-next-line no-console
                         console.log('other status', response.status)
                     } catch (err) {
+                        // eslint-disable-next-line no-console
                         console.log(err)
                     }
                     res.status(500).send()
