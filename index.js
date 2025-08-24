@@ -19,7 +19,7 @@ module.exports = (RED) => {
                                 'Content-Type': 'application/json',
                                 Authorization: `Bearer ${RED.settings.httpStorage.token}`
                             }
-                        })// bad comment
+                        })
                         if (response.status === 200 || response.status === 204) {
                             res.status(200).send()
                             return
