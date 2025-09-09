@@ -12,7 +12,7 @@ module.exports = (RED) => {
                         const response = await fetch(`${RED.settings.flowforge.forgeURL}/api/v1/teams/${RED.settings.flowforge.teamID}/npm/subflow`, {
                             method: 'PUT',
                             body: JSON.stringify({
-                                package: req.body.package,
+                                package: req.body.package || req.body.pack,
                                 subflow: req.body.def
                             }),
                             headers: {
