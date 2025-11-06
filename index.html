@@ -36,14 +36,13 @@
                 }
             })
 
-            const subMenuItem = $('<li>')
-            const link = $('<a>', { href: '#', tabIndex: -1 }).click(showSidebar)
-            const outerSpan = $('<span>', { class: 'red-ui-menu-label' })
-            const innerSpan = $('<span>').html('Export Subflow')
-            innerSpan.appendTo(outerSpan)
-            outerSpan.appendTo(link)
-            link.appendTo(subMenuItem)
-            $('#menu-item-subflow-submenu').append(subMenuItem)
+            RED.menu.addItem('menu-item-subflow', {
+                id: "menu-item-subflow-export",
+                label: 'Export Subflow',
+                onselect: function() {
+                    subMenuItem()
+                }
+            })
         }
     }
 
