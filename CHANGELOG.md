@@ -1,3 +1,5 @@
+# CHANGELOG
+
 #### v1.0.2 Release
 
 - Bump the development-dependencies group with 3 updates (#8) @app/dependabot
