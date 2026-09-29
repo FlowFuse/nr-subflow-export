@@ -50,6 +50,17 @@ jobs:
         with:
           node-version: 24
 
+      - name: Wait for @flowfuse/nr-subflow-export to be available in the public npm registry
+        timeout-minutes: 30
+        env:
+          VERSION: ${{ steps.version.outputs.semver }}
+        run: |
+          until npm view "@flowfuse/nr-subflow-export@${VERSION}" version --prefer-online 2>/dev/null | grep -qx "${VERSION}"; do
+            echo "@flowfuse/nr-subflow-export@${VERSION} not available yet, retrying in 15s"
+            sleep 15
+          done
+          echo "@flowfuse/nr-subflow-export@${VERSION} is available"
+
       - name: Update @flowfuse/nr-subflow-export dependency
         run: npm install @flowfuse/nr-subflow-export@^${{ steps.version.outputs.semver }}
 
